@@ -253,6 +253,7 @@ python -m tesis_alcaldesas.models.mdes_power                      # Tabla 6: MDE
 python -m tesis_alcaldesas.models.event_study_sensitivity          # Figura 2: sensibilidad
 python -m tesis_alcaldesas.models.sample_policy                    # Sample policy: main vs full
 python -m tesis_alcaldesas.models.extensive_margin                 # Tabla 7: extensivo + composición
+PYTHONPATH=src python -m did_moderno.window_robustness            # Tabla A1: robustez de ventana
 ```
 
 ### Paso 5b — Pipeline completo automático (alternativa)

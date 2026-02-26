@@ -12,6 +12,7 @@ Orden de ejecución:
   8. Figura 2: sensibilidad event study
   9. Sample policy (main vs full)
   10. Tabla 7: extensión (extensivo + composición)
+  11. Tabla A1: robustez de ventana (stacked DiD)
 
 Uso:
   python -m tesis_alcaldesas.run_all
@@ -43,6 +44,7 @@ STEPS = [
     ("Figura 2 — Sensibilidad event study",    "tesis_alcaldesas.models.event_study_sensitivity"),
     ("Sample policy (main vs full)",           "tesis_alcaldesas.models.sample_policy"),
     ("Tabla 7 — Extensión (extensivo + share)","tesis_alcaldesas.models.extensive_margin"),
+    ("Tabla A1 — Robustez de ventana (stacked)", "did_moderno.window_robustness"),
 ]
 
 
