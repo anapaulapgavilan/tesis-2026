@@ -45,3 +45,4 @@ docs/Base_de_Datos_de_Inclusion_Financiera_201812.xlsm
 # outputs/paper/
 # outputs/eda/
 # outputs/qc/
+!Code/outputs/paper/**

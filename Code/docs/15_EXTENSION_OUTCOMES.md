@@ -7,7 +7,7 @@ saldos per cápita) en escala asinh. Pero una alcaldesa también podría afectar
 el **margen extensivo** (¿hay *algún* acceso?) o la **composición de género**
 (¿cambia la proporción de mujeres?).
 
-Esta extensión es **exploratoria pero pre-especificada**: se declara antes de
+Esta extensión es **exploratoria**: se declara antes de
 ver los resultados como una pregunta complementaria, no como un ejercicio de
 búsqueda de significancia.
 
