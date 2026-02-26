@@ -26,8 +26,17 @@ municipal.
 - **Robustez:** transformación funcional alternativa (log1p), winsorización,
   exclusión de transiciones, placebo temporal (+4 trimestres) y placebo de género
   (outcomes masculinos).
+- **DiD moderno:** Stacked DiD (Cengiz et al. 2019) para corregir posibles sesgos
+  TWFE bajo adopción escalonada.
+- **MDES:** Minimum Detectable Effect Size al 80% de poder para cuantificar
+  qué efectos descarta el resultado nulo.
+- **Sensibilidad event study:** Variantes de ventana y bin extremo para blindar
+  el borderline p=0.083 en tarjetas de crédito.
+- **Sample policy:** Main sample (panel balanceado) + robustez con full sample.
 - **Heterogeneidad** por tipo de localidad (CONAPO) y tercil de población,
   con corrección Benjamini-Hochberg por múltiples pruebas.
+- **Extensión:** Margen extensivo (LPM para any>0) y composición de género
+  (share mujeres), como extensión exploratoria pre-especificada.
 
 Los cinco outcomes primarios (contratos totales, tarjetas de débito, tarjetas
 de crédito, créditos hipotecarios y saldo total de mujeres) se miden en tasas
@@ -43,6 +52,7 @@ inverso).
 │   ├── tesis_alcaldesas/              # ← Paquete principal (activo)
 │   │   ├── __init__.py
 │   │   ├── config.py                  #   Rutas, get_engine(), constantes
+│   │   ├── run_all.py                 #   Entrypoint: pipeline completo
 │   │   ├── data/
 │   │   │   ├── extract_panel.py       #   PostgreSQL → parquet (61 cols)
 │   │   │   └── build_features.py      #   Per cápita, asinh, winsor → 170 cols
@@ -52,7 +62,15 @@ inverso).
 │   │       ├── twfe.py                #   Tabla 2: TWFE baseline
 │   │       ├── event_study.py         #   Figura 1 + pre-trends tests
 │   │       ├── robustness.py          #   Tabla 3: robustez
-│   │       └── heterogeneity.py       #   Tabla 4: heterogeneidad + BH
+│   │       ├── heterogeneity.py       #   Tabla 4: heterogeneidad + BH
+│   │       ├── mdes_power.py          #   Tabla 6: MDES / poder estadístico
+│   │       ├── event_study_sensitivity.py  # Figura 2: sensibilidad bin extremo
+│   │       ├── sample_policy.py       #   Sample policy: main vs full
+│   │       └── extensive_margin.py    #   Tabla 7: extensivo + share
+│   │
+│   ├── did_moderno/                   # DiD moderno (stacked DiD)
+│   │   ├── run_stacked_did.py         #   Tabla 5 + Figura 3
+│   │   └── README.md
 │   │
 │   ├── eda/                           # Pipeline EDA automatizado
 │   │   └── run_eda.py
@@ -84,6 +102,12 @@ inverso).
 │   ├── 08_DATASET_CONSTRUCCION.md     #   Construcción del dataset analítico
 │   ├── 09_MODELADO_ECONOMETRICO.md    #   Ecuaciones, supuestos, decisiones
 │   └── 10_RESULTADOS_EMPIRICOS.md     #   Sección de resultados (texto tesis)
+│   ├── 11_DID_MODERNO.md             #   DiD moderno: stacked DiD
+│   ├── 12_MDES_PODER.md              #   MDES y poder estadístico
+│   ├── 13_EVENT_STUDY_SENSIBILIDAD.md #   Sensibilidad del event study
+│   ├── 14_SAMPLE_POLICY.md           #   Regla de muestra: main vs full
+│   ├── 15_EXTENSION_OUTCOMES.md      #   Extensión: extensivo + composición
+│   └── 16_CHECKLIST_PARA_DEFENSA.md  #   Checklist para defensa
 │
 ├── notebooks/
 │   ├── tesis_analisis.ipynb           # Notebook exploratorio principal
@@ -96,8 +120,18 @@ inverso).
 │   │   ├── tabla_2_twfe.*
 │   │   ├── tabla_3_robustez.*
 │   │   ├── tabla_4_heterogeneidad.*
+│   │   ├── tabla_5_did_moderno.csv    #   DiD moderno ATT
+│   │   ├── tabla_6_mdes.*             #   MDES / poder
+│   │   ├── tabla_7_extensive.*        #   Extensivo + composición
 │   │   ├── figura_1_event_study.pdf/.png
+│   │   ├── figura_2_event_study_sens.pdf  # Sensibilidad
+│   │   ├── figura_3_did_moderno_eventstudy.pdf
 │   │   ├── pretrends_tests.csv
+│   │   ├── pretrends_tests_sens.csv   #   Tests sensibilidad
+│   │   ├── twfe_vs_did_moderno.txt    #   Comparación TWFE vs stacked
+│   │   ├── mdes_summary.txt           #   Interpretación MDES
+│   │   ├── sample_sensitivity.txt     #   Main vs full comparison
+│   │   ├── tabla_2_twfe_main/full.*   #   Sample policy outputs
 │   │   └── event_study_coefs_*.csv
 │   └── qc/                            # Perfiles y chequeos de calidad
 │
@@ -211,9 +245,27 @@ python -m tesis_alcaldesas.models.robustness            # Tabla 3: robustez
 python -m tesis_alcaldesas.models.heterogeneity         # Tabla 4: heterogeneidad
 ```
 
+### Paso 5 — Extensiones robustas (nuevas)
+
+```bash
+PYTHONPATH=src python -m did_moderno.run_stacked_did              # Tabla 5 + Figura 3: DiD moderno
+python -m tesis_alcaldesas.models.mdes_power                      # Tabla 6: MDES
+python -m tesis_alcaldesas.models.event_study_sensitivity          # Figura 2: sensibilidad
+python -m tesis_alcaldesas.models.sample_policy                    # Sample policy: main vs full
+python -m tesis_alcaldesas.models.extensive_margin                 # Tabla 7: extensivo + composición
+```
+
+### Paso 5b — Pipeline completo automático (alternativa)
+
+```bash
+PYTHONPATH=src python -m tesis_alcaldesas.run_all     # Corre TODO en orden
+# o bien:
+make models                                            # Via Makefile
+```
+
 Los resultados (tablas `.csv` / `.tex` y figuras) se depositan en `outputs/paper/`.
 
-### Paso 5 — Usar resultados para la tesis
+### Paso 6 — Usar resultados para la tesis
 
 Las tablas y figuras en `outputs/paper/` son las que se incluyen directamente en
 el capítulo de resultados de la tesis. La lógica metodológica está documentada en:
@@ -233,7 +285,13 @@ el capítulo de resultados de la tesis. La lógica metodológica está documenta
 | Contrato de datos | ✅ docs/07_DATA_CONTRACT.md (348 columnas) |
 | Dataset analítico | ✅ 41,905 × 170 features |
 | Modelos econométricos | ✅ TWFE, event study, robustez, heterogeneidad |
+| **DiD moderno (Stacked DiD)** | ✅ Tabla 5 + Figura 3 |
+| **MDES / poder estadístico** | ✅ Tabla 6 + resumen |
+| **Sensibilidad event study** | ✅ Figura 2 + tests |
+| **Sample policy** | ✅ Main vs full |
+| **Extensión: extensivo + share** | ✅ Tabla 7 |
 | Resultados empíricos | ✅ docs/10_RESULTADOS_EMPIRICOS.md |
+| **Checklist defensa** | ✅ docs/16_CHECKLIST_PARA_DEFENSA.md |
 
 ### Resultado principal
 

@@ -1,0 +1,22 @@
+============================================================
+COMPARACIÓN: TWFE convencional vs Stacked DiD
+============================================================
+
+Outcome                       TWFE β  Stacked β   TWFE p  Stacked p  Mismo signo
+--------------------------------------------------------------------------------
+Contratos totales             0.0070     0.0822   0.7466     0.0014           Sí
+Tarjetas débito              -0.0137    -0.0138   0.5210     0.7525           Sí
+Tarjetas crédito             -0.0017     0.0008   0.9193     0.9700           No
+Créditos hipotecarios         0.0180     0.0194   0.4002     0.3951           Sí
+Saldo total                   0.0042     0.2741   0.9312     0.0000           Sí
+
+--------------------------------------------------------------------------------
+Interpretación:
+  Si los signos y magnitudes son similares → sesgo TWFE es menor.
+  Si difieren → TWFE puede incorporar sesgos de timing negativo.
+  En ambos casos, la conclusión cualitativa (nulo) se mantiene/revisa.
+
+Método Stacked DiD: Cengiz, Dube, Lindner & Zipperer (2019).
+  Cada cohorte g se compara solo con never-treated en una ventana
+  [-4, +8] alrededor del evento, con FE municipio×stack
+  y FE periodo×stack, SE clustered a nivel municipio.
