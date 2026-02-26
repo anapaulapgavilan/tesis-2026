@@ -295,13 +295,21 @@ el capítulo de resultados de la tesis. La lógica metodológica está documenta
 
 ### Resultado principal
 
-> **No se detecta efecto estadísticamente significativo** de la presencia de una
-> alcaldesa sobre la inclusión financiera de las mujeres a nivel municipal,
-> en ninguno de los cinco indicadores analizados. Los intervalos de confianza
-> descartan efectos superiores a ±5% en contratos per cápita (escala asinh).
-> El resultado es robusto a transformaciones funcionales alternativas,
-> exclusión de transiciones, placebos temporales y de género, y no se modifica
-> al explorar heterogeneidad por grado de urbanización o tamaño poblacional.
+> El **TWFE convencional** no detecta efectos significativos en ninguno de los
+> cinco indicadores. Sin embargo, el **Stacked DiD** (Cengiz et al. 2019)
+> —diseñado para corregir sesgos bajo adopción escalonada— revela efectos
+> positivos y significativos en **contratos totales** ($\hat{\beta} = 0.082$,
+> $p = 0.003$) y **saldo total** ($\hat{\beta} = 0.274$, $p < 0.001$),
+> con SE clustered a nivel municipio original.
+>
+> Para tarjetas de débito, crédito e hipotecarios, ambos estimadores coinciden
+> en la ausencia de efectos. El MDES al 80% de poder indica que el diseño
+> permite detectar efectos $\geq$ 0.04–0.10 en escala asinh, descartando
+> efectos grandes en los outcomes nulos.
+>
+> Los resultados son robustos a transformaciones funcionales, exclusión de
+> transiciones, placebos (temporal y de género), y no se modifican al explorar
+> heterogeneidad por urbanización o tamaño poblacional (correción BH).
 
 ---
 

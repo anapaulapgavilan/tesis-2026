@@ -43,7 +43,7 @@ por las siguientes razones:
 Para cada cohorte $g$ (municipios cuyo `first_treat_period` = $g$):
 
 1. Construir sub-dataset: cohorte $g$ (tratados) + never-treated (controles)
-2. Restringir a ventana $[g - 4, g + 8]$ trimestres
+2. Restringir a ventana $[-4, +8]$ trimestres alrededor de $g$
 3. Añadir identificadores de stack (municipio×stack, periodo×stack)
 
 Apilar todos los sub-datasets y estimar:

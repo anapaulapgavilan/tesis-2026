@@ -206,7 +206,63 @@ Sub-muestras por `tipo_pob` y terciles de `log_pob`:
 
 ---
 
-## 8. Variables excluidas por leakage
+## 8. Stacked Difference-in-Differences (DiD Moderno)
+
+### 8.1 Motivación
+
+Dado que el tratamiento presenta adopción escalonada (15 cohortes entre 2018Q3 y
+2022Q3), el $\hat{\beta}_{\text{TWFE}}$ puede sufrir sesgos por comparaciones
+contaminadas (Goodman-Bacon 2021). El Stacked DiD (Cengiz, Dube, Lindner & Zipperer
+2019) elimina estas comparaciones.
+
+Como hay adopción escalonada y potencial heterogeneidad temporal en el efecto del
+tratamiento, el TWFE puede generar ponderaciones no convexas que atenúen o reviertan
+el signo del efecto estimado; por eso reportamos el Stacked DiD como **robustez
+principal** del TWFE convencional.
+
+### 8.2 Especificación
+
+Para cada cohorte $g$, se construye un sub-dataset con:
+- Municipios tratados de esa cohorte + municipios **never-treated** (1,476)
+- Ventana temporal: $[g - 4, g + 8]$ trimestres
+
+Se apilan los 15 sub-datasets y se estima:
+
+$$Y_{i,t,g} = \alpha_{i \times g} + \gamma_{t \times g} + \beta \cdot D_{i,t,g} + \varepsilon_{i,t,g}$$
+
+| Componente | Implementación |
+|-----------|----------------|
+| Efectos fijos | Municipio×stack ($\alpha_{i \times g}$) + periodo×stack ($\gamma_{t \times g}$) |
+| Cluster SE | **Municipio original** (`cve_mun`, ~2,471 clusters), no `mun_stack` |
+| Grupo de control | Solo never-treated (1,476 municipios) |
+| Ventana | $[-4, +8]$ trimestres alrededor del evento |
+
+**Nota sobre clustering:** Cada municipio aparece en múltiples stacks. Clusterizar
+por `mun_stack` (entidad×stack) inflaría artificialmente el número de clusters
+($\sim$37,000 vs $\sim$2,471) y subestimaría los errores estándar. Se clusteriza por
+el municipio original (`cve_mun`) mediante el argumento `clusters` de `PanelOLS.fit()`.
+
+### 8.3 ATT dinámico
+
+$$Y_{i,t,g} = \alpha_{i \times g} + \gamma_{t \times g} + \sum_{k \neq -1} \delta_k \cdot \mathbf{1}\{\text{event\_time} = k\} + \varepsilon_{i,t,g}$$
+
+Solo los municipios de la cohorte tratada contribuyen a las dummies de event-time;
+los never-treated tienen todas las dummies $= 0$.
+
+### 8.4 Pipeline
+
+```bash
+PYTHONPATH=src python -m did_moderno.run_stacked_did
+```
+
+Outputs: `tabla_5_did_moderno.csv`, `figura_3_did_moderno_eventstudy.pdf`,
+`twfe_vs_did_moderno.txt`.
+
+Documentación detallada: `docs/11_DID_MODERNO.md`.
+
+---
+
+## 9. Variables excluidas por leakage
 
 | Variable | Razón | Aparece en algún modelo |
 |----------|-------|:----------------------:|
@@ -222,7 +278,7 @@ Sub-muestras por `tipo_pob` y terciles de `log_pob`:
 
 ---
 
-## 9. Criterios para interpretar resultados
+## 10. Criterios para interpretar resultados
 
 ### Resultado nulo — ¿qué significa?
 
@@ -245,7 +301,7 @@ Sub-muestras por `tipo_pob` y terciles de `log_pob`:
 
 ---
 
-## 10. Pipeline de reproducción
+## 11. Pipeline de reproducción
 
 ```bash
 cd <raíz del repo>
@@ -265,6 +321,9 @@ python src/models/04_robustness.py
 
 # 5. Heterogeneidad
 python src/models/05_heterogeneity.py
+
+# 6. Stacked DiD (DiD Moderno)
+PYTHONPATH=src python -m did_moderno.run_stacked_did
 ```
 
 Dependencias: `pandas`, `numpy`, `linearmodels`, `statsmodels`, `matplotlib`, `scipy`, `pyarrow`, `jinja2`.
