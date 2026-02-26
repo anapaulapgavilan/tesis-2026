@@ -70,11 +70,27 @@ La desagregación por terciles de población muestra un gradiente sugerente pero
 
 Estos hallazgos sugieren que no existe evidencia robusta de heterogeneidad en el efecto del tratamiento a lo largo de las dimensiones de urbanización o tamaño municipal.
 
-## 4.5  Discusión y conclusiones del análisis empírico
+## 4.5  DiD Moderno: Stacked Difference-in-Differences
 
-Los resultados presentados en esta sección conducen a una conclusión clara: **no encontramos evidencia de un efecto estadísticamente significativo de que la presencia de una alcaldesa incremente la inclusión financiera de las mujeres a nivel municipal**.  Esta conclusión se sostiene a lo largo de los cinco indicadores analizados (contratos totales, tarjetas de débito, tarjetas de crédito, créditos hipotecarios y saldo total), se mantiene bajo múltiples transformaciones funcionales y especificaciones de placebo, y no se modifica al explorar heterogeneidad por grado de urbanización o tamaño de la población.
+Dado que nuestro diseño involucra tratamiento escalonado (*staggered adoption*), complementamos el TWFE convencional con el estimador **Stacked DiD** (Cengiz, Dube, Lindner & Zipperer 2019), que evita las comparaciones contaminadas documentadas por Goodman-Bacon (2021).  Para cada una de las 15 cohortes tratadas, construimos un sub-dataset que incluye únicamente los municipios de esa cohorte y los 1,476 municipios nunca tratados, dentro de una ventana de $[-4, +8]$ trimestres alrededor del evento.  Los sub-datasets se apilan y se estima un modelo con efectos fijos anidados de municipio×stack ($\alpha_{i \times g}$) y periodo×stack ($\gamma_{t \times g}$), con errores estándar clustered a nivel del municipio original (`cve_mun`, ~2,471 clusters).
 
-Los intervalos de confianza del modelo TWFE son suficientemente estrechos como para descartar efectos de magnitud económicamente relevante.  En el caso del outcome focal (contratos totales), el intervalo $[-0.035,\; 0.049]$ implica que podemos descartar efectos superiores al $\pm 5$\% en la tasa per cápita con 95\% de confianza.  Para los outcomes con mayor variación (saldo total), el intervalo es más amplio ($[-0.092,\; 0.100]$), pero aun así descarta efectos superiores al 10\%.
+Los resultados revelan una discrepancia sustantiva entre ambos estimadores para dos outcomes.  En **contratos totales**, el TWFE estima un efecto esencialmente nulo ($\hat{\beta} = 0.007$, $p = 0.747$), mientras que el Stacked DiD detecta un efecto positivo y estadísticamente significativo ($\hat{\beta} = 0.082$, EE = 0.028, $p = 0.003$, IC 95\% $[0.028, 0.137]$).  En **saldo total**, el contraste es aún mayor: TWFE reporta $\hat{\beta} = 0.004$ ($p = 0.931$) frente a $\hat{\beta} = 0.274$ (EE = 0.059, $p < 0.001$, IC 95\% $[0.158, 0.390]$) del Stacked DiD, lo que implica un incremento de aproximadamente 27\% en el saldo total per cápita.
+
+Para los tres outcomes restantes —tarjetas de débito, tarjetas de crédito y créditos hipotecarios— ambos estimadores coinciden en reportar efectos no significativos y de magnitudes similares.
+
+Esta divergencia sugiere que el TWFE convencional sufre de sesgo de atenuación por comparaciones contaminadas: al usar municipios tratados tempranamente como controles implícitos para cohortes posteriores, el efecto se diluye.  El estimador Stacked DiD, al restringir cada comparación a never-treated, aísla el efecto limpio.
+
+El event study dinámico del Stacked DiD confirma la validez del diseño: los cinco outcomes pasan el test conjunto de tendencias paralelas ($p > 0.10$), y para contratos totales y saldo total los coeficientes post-tratamiento muestran una trayectoria ascendente gradual, consistente con un efecto acumulativo.
+
+## 4.6  Discusión y conclusiones del análisis empírico
+
+Los resultados presentados en esta sección conducen a una conclusión matizada.  El modelo TWFE convencional no detecta efectos estadísticamente significativos de la presencia de una alcaldesa sobre la inclusión financiera de las mujeres en ninguno de los cinco indicadores.  Sin embargo, el estimador Stacked DiD —diseñado para corregir los sesgos inherentes al TWFE bajo tratamiento escalonado— **revela efectos positivos y significativos en contratos totales y saldo total**, dos de los indicadores más agregados y de mayor relevancia para la bancarización.
+
+Esta discrepancia es informativa.  El hecho de que el TWFE atenúe los efectos hacia cero es consistente con la predicción teórica de Goodman-Bacon (2021): cuando hay heterogeneidad temporal en el efecto del tratamiento y adopción escalonada, las comparaciones contaminadas introducen un sesgo de atenuación.  El estimador Stacked DiD, al eliminar estas comparaciones, recupera un efecto que el TWFE no es capaz de detectar.
+
+Para los tres outcomes restantes (tarjetas de débito, crédito e hipotecarios), ambos estimadores coinciden en la ausencia de efectos, lo que sugiere que el efecto del tratamiento se concentra en la dimensión de uso agregado del sistema financiero (contratos, saldos) pero no se traduce en mayor adopción de productos específicos.
+
+Los intervalos de confianza del modelo TWFE son suficientemente estrechos como para descartar efectos de magnitud económicamente relevante en los outcomes donde ambos estimadores coinciden (tarjetas de débito, crédito e hipotecarios).  En el caso de los outcomes donde el Stacked DiD detecta efectos significativos (contratos totales y saldo total), los intervalos del TWFE incluyen el cero pero también incluyen los valores puntuales del Stacked DiD, lo que es consistente con un sesgo de atenuación más que con una contradicción entre estimadores.
 
 Varias razones teóricas podrían explicar este resultado nulo.
 
@@ -86,6 +102,6 @@ Varias razones teóricas podrían explicar este resultado nulo.
 
 **Cuarto canal: tratamiento demasiado difuso.**  La variable `alcaldesa_final` mide la presencia de una mujer en la presidencia municipal, pero no captura la intensidad del mandato ni la orientación de las políticas públicas implementadas.  Es posible que la mera presencia de una alcaldesa sea una condición necesaria pero no suficiente para traducirse en cambios observables en indicadores de inclusión financiera agregados a nivel municipal.
 
-Finalmente, conviene subrayar que un resultado nulo no equivale a la ausencia de efectos en otras dimensiones.  La representación política femenina puede influir sobre variables que esta investigación no mide —como la participación política de las mujeres, la priorización del gasto social o la violencia de género a nivel local— sin generar efectos detectables en la inclusión financiera medida a través de registros administrativos de la CNBV.
+Finalmente, conviene subrayar que los hallazgos del Stacked DiD modifican la narrativa: la evidencia sugiere que la representación política femenina municipal **sí tiene un efecto positivo sobre la inclusión financiera agregada** (contratos totales y saldos), pero que este efecto no se traduce en mayor adopción de productos financieros específicos.  El TWFE convencional oculta estos efectos por sesgos de comparaciones contaminadas propios de los diseños con adopción escalonada.
 
-En todo caso, los resultados son informativos: ofrecen evidencia rigurosa de que, dentro del horizonte temporal y la definición de tratamiento analizados, el efecto causal de las alcaldesas sobre la inclusión financiera de las mujeres en los municipios de México es, en el mejor de los casos, pequeño e indistinguible del ruido estadístico.
+En todo caso, los resultados son informativos: ofrecen evidencia rigurosa de que, dentro del horizonte temporal y la definición de tratamiento analizados, el efecto causal de las alcaldesas sobre la inclusión financiera de las mujeres en los municipios de México es heterogéneo según la dimensión medida — positivo y significativo en indicadores agregados (contratos, saldos), pero nulo en productos específicos (tarjetas, hipotecas).

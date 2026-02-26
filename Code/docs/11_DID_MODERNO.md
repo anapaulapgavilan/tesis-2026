@@ -77,6 +77,70 @@ Los resultados se comparan en `outputs/paper/twfe_vs_did_moderno.txt`:
 - **En ambos casos:** Si ambos son nulos, la conclusión de "no efecto detectable"
   se refuerza con un estimador apropiado para staggered adoption.
 
+### Nota sobre inferencia: clustering a nivel municipio original
+
+En un dataset apilado, cada municipio $i$ aparece en múltiples stacks $g$.
+Los efectos fijos anidados ($\alpha_{i \times g}$, $\gamma_{t \times g}$) absorben
+heterogeneidad dentro de cada stack, pero el _clustering_ debe reflejar la
+correlación residual a nivel de la unidad fundamental: el municipio original
+(`cve_mun`), **no** la entidad compuesta municipio×stack (`mun_stack`).
+
+Clusterizar por `mun_stack` equivaldría a tratar las $G$ apariciones del mismo
+municipio como si fueran unidades independientes, lo que infla artificialmente
+el número efectivo de clusters ($\sim$37,000 en lugar de $\sim$2,471) y subestima
+los errores estándar. La implementación utiliza el argumento `clusters` de
+`PanelOLS.fit()` de `linearmodels` para pasar directamente la variable `cve_mun`
+como cluster ID, conservando los FE anidados por stack.
+
+Esto es consistente con la recomendación de Cameron & Miller (2015) de
+clusterizar al nivel más alto de la jerarquía en la que se sospecha correlación,
+y con la práctica estándar en la literatura de stacked DiD (e.g., Deshpande &
+Li 2019; Fadlon & Nielsen 2019).
+
+## Resultados
+
+### ATT agregado (Tabla 5)
+
+| Outcome | Stacked ATT | SE | p | IC 95% |
+|---|---|---|---|---|
+| Contratos totales | 0.082 | 0.028 | 0.003 | [0.028, 0.137] |
+| Tarjetas débito | −0.014 | 0.045 | 0.760 | [−0.102, 0.075] |
+| Tarjetas crédito | 0.001 | 0.021 | 0.971 | [−0.041, 0.042] |
+| Créditos hipotecarios | 0.019 | 0.023 | 0.407 | [−0.026, 0.065] |
+| Saldo total | 0.274 | 0.059 | 0.000 | [0.158, 0.390] |
+
+$N = 228{,}440$ observaciones (2,471 municipios × 15 stacks). SE clustered a nivel
+municipio original (`cve_mun`, ~2,471 clusters).
+
+### Interpretación comparada con TWFE
+
+Los resultados revelan una **discrepancia importante** entre el TWFE convencional y
+el Stacked DiD para dos outcomes:
+
+1. **Contratos totales:** TWFE estima un efecto nulo ($\hat{\beta} = 0.007$, $p = 0.747$),
+   mientras que el Stacked DiD detecta un efecto positivo significativo
+   ($\hat{\beta} = 0.082$, $p = 0.003$). Esto sugiere que el TWFE convencional sufre
+   de sesgo de atenuación por comparaciones contaminadas (Goodman-Bacon 2021), donde
+   municipios tratados tempranamente absorben parte del efecto en las comparaciones "malas".
+
+2. **Saldo total:** TWFE reporta un efecto nulo ($\hat{\beta} = 0.004$, $p = 0.931$),
+   pero el Stacked DiD encuentra un efecto positivo grande y significativo
+   ($\hat{\beta} = 0.274$, $p < 0.001$). La magnitud implica un incremento de ~27% en
+   el saldo total per cápita de las mujeres.
+
+3. **Tarjetas de débito, crédito e hipotecarios:** Ambos estimadores coinciden en
+   la ausencia de efectos significativos, con signos y magnitudes similares.
+
+### ATT dinámico (Figura 3)
+
+Los coeficientes de event-time confirman:
+
+- **Pre-trends:** Todos los outcomes pasan el test conjunto de tendencias paralelas
+  ($p > 0.10$ en los cinco casos), lo que refuerza la credibilidad del diseño.
+- **Post-tratamiento:** Para contratos totales y saldo total, los coeficientes post
+  muestran una trayectoria ascendente que se materializa gradualmente después del
+  evento, consistente con un efecto acumulativo del tratamiento.
+
 ## Outputs
 
 | Archivo | Contenido |

@@ -195,11 +195,13 @@ def estimate_stacked_att(
     """
     Regresión pooled sobre el dataset apilado:
       Y = α_{i×g} + γ_{t×g} + β · D_stack + ε
-    con FE de municipio-stack y periodo-stack, cluster a nivel municipio.
+    con FE de municipio-stack y periodo-stack.
+    Clustering a nivel del municipio original (cve_mun) a través de stacks,
+    no por mun_stack, para reflejar la correlación intra-municipio correcta.
 
     Returns dict with coef, se, pval, ci, nobs.
     """
-    cols = [depvar, "D_stack", "mun_stack", "t_stack"]
+    cols = [depvar, "D_stack", "mun_stack", "t_stack", "cve_mun"]
     mask = stacked[cols[:2]].notna().all(axis=1)
     sub = stacked.loc[mask].copy()
 
@@ -210,13 +212,19 @@ def estimate_stacked_att(
     # Encode mun_stack and t_stack as integers
     sub["_ent"] = pd.Categorical(sub["mun_stack"]).codes
     sub["_tim"] = pd.Categorical(sub["t_stack"]).codes
+
+    # Preserve original municipality for clustering across stacks
+    _cluster_mun = pd.Categorical(sub["cve_mun"]).codes
+    _cluster_mun = pd.Series(_cluster_mun, index=sub.index)
+
     sub = sub.set_index(["_ent", "_tim"])
+    _cluster_mun.index = sub.index  # align after re-index
 
     y = sub[depvar]
     X = sub[["D_stack"]]
 
     mod = PanelOLS(y, X, entity_effects=True, time_effects=True, check_rank=False)
-    res = mod.fit(cov_type="clustered", cluster_entity=True)
+    res = mod.fit(cov_type="clustered", clusters=_cluster_mun)
 
     beta = res.params["D_stack"]
     se = res.std_errors["D_stack"]
@@ -270,7 +278,7 @@ def estimate_stacked_dynamic(
         sub.loc[sub["is_treated_cohort"] == 0, col] = 0.0
         dummy_cols.append((k, col))
 
-    cols_needed = [depvar] + [c for _, c in dummy_cols] + ["mun_stack", "t_stack"]
+    cols_needed = [depvar] + [c for _, c in dummy_cols] + ["mun_stack", "t_stack", "cve_mun"]
     mask = sub[[depvar]].notna().all(axis=1)
     sub = sub.loc[mask].copy()
 
@@ -280,13 +288,19 @@ def estimate_stacked_dynamic(
     # PanelOLS needs numeric time index
     sub["_ent"] = pd.Categorical(sub["mun_stack"]).codes
     sub["_tim"] = pd.Categorical(sub["t_stack"]).codes
+
+    # Preserve original municipality for clustering across stacks
+    _cluster_mun = pd.Categorical(sub["cve_mun"]).codes
+    _cluster_mun = pd.Series(_cluster_mun, index=sub.index)
+
     sub = sub.set_index(["_ent", "_tim"])
+    _cluster_mun.index = sub.index  # align after re-index
 
     y = sub[depvar]
     X = sub[[c for _, c in dummy_cols]]
 
     mod = PanelOLS(y, X, entity_effects=True, time_effects=True, check_rank=False)
-    res = mod.fit(cov_type="clustered", cluster_entity=True)
+    res = mod.fit(cov_type="clustered", clusters=_cluster_mun)
 
     ci_df = res.conf_int()
     rows = []
