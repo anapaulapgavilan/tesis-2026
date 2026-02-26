@@ -1,0 +1,47 @@
+# ── Entorno virtual ──
+.venv/
+venv/
+env/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── macOS ──
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ── Secrets ──
+.env
+
+# ── Editores / IDEs ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Jupyter ──
+.ipynb_checkpoints/
+
+# ── Datos procesados (reproducibles con src/data/) ──
+data/processed/*.parquet
+
+# ── Editable install ──
+src/*.egg-info/
+
+# ── Archivos fuente pesados (no rastreables) ──
+docs/Base_de_Datos_de_Inclusion_Financiera_201812.xlsm
+
+# ── Outputs regenerables (reproducibles con src/models/) ──
+# Descomenta si prefieres NO versionar outputs:
+# outputs/paper/
+# outputs/eda/
+# outputs/qc/

@@ -1,0 +1,270 @@
+# Modelado Econométrico — Documentación Técnica
+
+**Pipeline:** `src/models/01_table1_descriptives.py` → `02_twfe.py` → `03_event_study.py` → `04_robustness.py` → `05_heterogeneity.py`  
+**Input:** `data/processed/analytical_panel_features.parquet`
+
+---
+
+## 1. Estrategia de identificación
+
+### 1.1 Pregunta
+
+> ¿Cuál es el efecto causal de tener alcaldesa ($D_{it} = 1$) sobre la inclusión
+> financiera de las mujeres en municipios mexicanos?
+
+### 1.2 Diseño
+
+**Diferencias en diferencias (DiD)** con datos de panel, explotando variación
+within-municipality en `alcaldesa_final` a lo largo de 17 trimestres (2018Q3–2022Q3).
+
+| Componente | Implementación |
+|-----------|----------------|
+| Tratamiento | `alcaldesa_final` ∈ {0,1} |
+| Efectos fijos | Municipio ($\alpha_i$, 2,471) + periodo ($\gamma_t$, 17) |
+| Cluster SE | Municipio (2,471 clusters) |
+| Control | `log_pob` (predeterminada/lenta) |
+| Grupo de control implícito | Never-treated + not-yet-treated (en TWFE) |
+
+### 1.3 Supuesto clave — Tendencias paralelas
+
+En ausencia de tratamiento, los municipios que reciben alcaldesa habrían seguido la
+misma trayectoria en inclusión financiera que los municipios que no la reciben.
+
+**Evaluación empírica:** Event study con leads K=4 y lags L=8 (§4).
+
+---
+
+## 2. Modelos y ecuaciones
+
+### 2.1 TWFE baseline
+
+$$
+Y_{it} = \alpha_i + \gamma_t + \beta \cdot D_{it} + \delta \cdot \log(\text{pob})_{it} + \varepsilon_{it}
+$$
+
+- $Y_{it}$: outcome en escala asinh (ver §3)
+- $\beta$: **efecto promedio TWFE** — bajo adopción escalonada con efectos
+  heterogéneos, $\hat{\beta}_{\text{TWFE}}$ es un promedio ponderado con pesos
+  potencialmente no convexos (Goodman-Bacon, 2021). **No se denomina ATT**; ese
+  término se reserva para estimadores que lo recuperan formalmente (Callaway &
+  Sant'Anna, Sun & Abraham).
+
+### 2.2 Event study
+
+$$
+Y_{it} = \alpha_i + \gamma_t + \sum_{k \neq -1} \delta_k \cdot \mathbf{1}\{K_{it} = k\} + \delta \cdot \log(\text{pob})_{it} + \varepsilon_{it}
+$$
+
+- $K_{it}$: event_time = `t_index` − `first_treat_t`
+- Referencia: $k = -1$ (trimestre inmediatamente anterior al tratamiento)
+- Leads: $k \in \{-4, -3, -2\}$ (diagnostican pre-trends)
+- Lags: $k \in \{0, 1, ..., 7\}$ (capturan dinámica post-tratamiento)
+- Bins extremos: $k \leq -4$ y $k \geq 8$ agrupados
+- Muestra: excluye always-treated (sin pre-período)
+
+**Test conjunto de pre-trends:** estadístico $\chi^2$ Wald que todos los
+coeficientes pre-tratamiento ($\delta_{-4}, \delta_{-3}, \delta_{-2}$) = 0.
+
+---
+
+## 3. Escala de la variable dependiente
+
+### 3.1 Per cápita
+
+$$
+Y_{pc} = \frac{Y_{\text{raw}}}{\text{pob\_adulta\_m}} \times 10{,}000
+$$
+
+Unidades: outcome por cada 10,000 mujeres adultas.
+
+### 3.2 ¿Por qué asinh como baseline?
+
+$$
+Y_{\text{asinh}} = \text{asinh}(Y_{pc}) = \ln\!\left(Y_{pc} + \sqrt{Y_{pc}^2 + 1}\right)
+$$
+
+1. **Ceros legítimos:** Muchos municipios tienen 0 contratos de ahorro o 0 hipotecas.
+   $\ln(Y)$ no está definido en 0.
+2. **Sesgo de $\ln(Y+1)$:** Para valores pequeños, $\ln(1+Y) \neq \ln(Y)$, lo que
+   introduce sesgo sistemático (Bellemare & Wichman, 2020).
+3. **Interpretación:** Para $Y$ grandes, $\text{asinh}(Y) \approx \ln(2Y)$, por lo
+   que $\hat{\beta}$ se interpreta como semi-elasticidad aproximada.
+4. **Diferenicabilidad:** Monotónica y diferenciable en todo $\mathbb{R}$.
+
+### 3.3 Escalas de robustez
+
+| Escala | Fórmula | Propósito |
+|--------|---------|-----------|
+| Winsor + asinh | $\text{asinh}(\text{clip}(Y_{pc}, q_{0.01}, q_{0.99}))$ | Controlar outliers |
+| $\log(1+Y)$ | $\ln(1 + Y_{pc})$ | Comparabilidad con literatura |
+
+---
+
+## 4. Diagnóstico de pre-trends
+
+### 4.1 Resultados
+
+| Outcome | $\chi^2$ | p-valor | ¿Pasa 10%? |
+|---------|------:|--------:|:----------:|
+| Contratos totales | 5.49 | 0.139 | ✓ |
+| Tarjetas débito | 3.80 | 0.284 | ✓ |
+| Tarjetas crédito | 6.67 | 0.083 | ✗ (borderline) |
+| Créditos hipotecarios | 0.75 | 0.861 | ✓ |
+| Saldo total | 3.52 | 0.319 | ✓ |
+
+### 4.2 Interpretación
+
+- **4 de 5 outcomes** pasan el test conjunto al 10%.
+- **Tarjetas de crédito** presenta un lead $k=-4$ significativo ($p=0.043$), pero
+  el test conjunto es marginal ($p=0.083$). Esto podría reflejar ruido en el extremo
+  del bin (k ≤ -4) más que una violación sistemática.
+- **Decisión:** Los pre-trends son razonablemente consistentes con tendencias
+  paralelas. Se procede con TWFE como especificación principal.
+
+### 4.3 Mapa de decisiones
+
+```
+¿Pre-trends pasan? (χ² test conjunto p > 0.10)
+├── 4/5 SÍ → Proceder con TWFE como especificación principal
+│   ├── tarjetas crédito borderline → reportar pero no descartar
+│   └── Futuro: estimar C&S/Sun-Abraham como robustez
+└── Si fallaran:
+    ├── Lead -1 significativo → recodificar con anticipación
+    ├── Leads -2, -3, -4 significativos → DiD no válido
+    │   └── Considerar matching + DiD o tendencias específicas
+    └── Solo bin extremo (-4) → probablemente ruido (como en tarjetas crédito)
+```
+
+---
+
+## 5. Resultados TWFE
+
+### 5.1 Efecto TWFE (5 outcomes primarios)
+
+| Outcome | $\hat{\beta}$ | SE | p-valor | Significativo |
+|---------|----------:|---:|--------:|:-------------:|
+| Contratos totales | 0.007 | 0.022 | 0.747 | No |
+| Tarjetas débito | -0.014 | 0.021 | 0.521 | No |
+| Tarjetas crédito | -0.002 | 0.017 | 0.919 | No |
+| Créditos hipotecarios | 0.018 | 0.021 | 0.400 | No |
+| Saldo total | 0.004 | 0.049 | 0.931 | No |
+
+### 5.2 Interpretación
+
+Ninguno de los 5 outcomes primarios muestra un efecto estadísticamente significativo
+de `alcaldesa_final` sobre la inclusión financiera femenina. Los coeficientes son
+cercanos a cero y los intervalos de confianza incluyen el cero con holgura.
+
+**Esto no significa "no hay efecto"** — significa que con la variación disponible en
+el panel (894 switchers, 17 trimestres), no se detecta un efecto distinguible del
+ruido estadístico en la escala asinh.
+
+---
+
+## 6. Robustez
+
+| Test | $\hat{\beta}$ | SE | N | Resultado |
+|------|----------:|---:|--:|-----------|
+| Baseline asinh | 0.007 | 0.022 | 41,905 | n.s. |
+| R1: log(1+y) | 0.005 | 0.020 | 41,905 | Consistente |
+| R2: Winsor + asinh | 0.008 | 0.021 | 41,905 | Consistente |
+| R3: Excluir transiciones | 0.002 | 0.024 | 38,303 | Consistente |
+| R4: Placebo temporal (+4 trim) | -0.019 | 0.020 | 32,027 | ✓ ≈ 0 |
+| R5: Placebo género (hombres) | -0.001 | 0.025 | 41,905 | ✓ ≈ 0 |
+
+**Conclusión de robustez:**
+- El resultado nulo es robusto a escala, winsorización y definición del tratamiento.
+- Los placebos temporal y de género confirman que no hay efecto espurio: el
+  tratamiento adelantado 4 trimestres no tiene efecto, y los outcomes masculinos
+  tampoco muestran efecto de `alcaldesa_final`.
+
+---
+
+## 7. Heterogeneidad
+
+Sub-muestras por `tipo_pob` y terciles de `log_pob`:
+
+| Dimensión | Grupo | $\hat{\beta}$ | SE | p-valor | q-value (BH) |
+|-----------|-------|----------:|---:|--------:|:----:|
+| tipo_pob | Rural | -0.104 | 0.065 | 0.109 | 0.492 |
+| | En Transición | -0.007 | 0.035 | 0.839 | 0.928 |
+| | Semi-urbano | 0.003 | 0.029 | 0.928 | 0.928 |
+| | Urbano | 0.003 | 0.013 | 0.796 | 0.928 |
+| | Semi-metrópoli | -0.004 | 0.015 | 0.774 | 0.928 |
+| | Metrópoli | 0.030** | 0.013 | 0.024 | 0.215 |
+| Tercil pob | T1 (pequeño) | -0.069 | 0.053 | 0.196 | 0.587 |
+| | T2 (mediano) | -0.021 | 0.032 | 0.504 | 0.928 |
+| | T3 (grande) | 0.003 | 0.014 | 0.823 | 0.928 |
+
+**Notas:**
+- Metrópoli muestra significancia nominal ($p=0.024$) pero tiene $q=0.215$ tras
+  corrección BH → **no sobrevive múltiples pruebas**.
+- El efecto en municipios rurales es negativo y borderline → consistente con
+  la hipótesis de que los mecanismos podrían operar diferente en zonas con menor
+  infraestructura financiera.
+- **Conclusión:** No hay efecto heterogéneo robusto tras corrección FDR.
+
+---
+
+## 8. Variables excluidas por leakage
+
+| Variable | Razón | Aparece en algún modelo |
+|----------|-------|:----------------------:|
+| `alcaldesa_final_f1`, `f2`, `f3` | Leads — información futura | Solo event study (como dummies diagnósticas) |
+| `alcaldesa_final_l1`, `l2`, `l3` | Lags — post-tratamiento | Solo event study (como dummies post) |
+| `alcaldesa_transition` | Endógena | No |
+| `alcaldesa_transition_gender` | Endógena | No |
+| `alcaldesa`, `alcaldesa_end` | Sin imputar (NULLs) | No |
+| `ever_alcaldesa` | Absorbida por FE municipio | No (sí en descriptivos) |
+| `saldoprom_*` (56 cols) | NULLs estructurales ÷0 | No extraídas |
+| Outcomes `_t` (totales) | Endógeno (incluye mujeres) | No extraídos |
+| Outcomes `_h` como controles | Bad control | Solo placebo género |
+
+---
+
+## 9. Criterios para interpretar resultados
+
+### Resultado nulo — ¿qué significa?
+
+1. **Poder estadístico:** Con 894 switchers y 17 trimestres, el diseño podría ser
+   insuficiente para detectar efectos pequeños. Un cálculo de poder post-hoc ayudaría
+   a cuantificar el MDE (Minimum Detectable Effect).
+
+2. **Mecanismo temporal:** El efecto de una alcaldesa sobre inclusión financiera
+   podría requerir más de 8 trimestres para materializarse (acción institucional
+   es lenta).
+
+3. **Heterogeneidad TWFE:** Bajo efectos heterogéneos, el $\hat{\beta}_{TWFE}$ puede
+   ser un promedio mal ponderado (Goodman-Bacon). Recomendación: estimar C&S como
+   extensión.
+
+4. **Escala municipal:** Los outcomes financieros están determinados principalmente
+   por el sistema bancario (federal), no por gobiernos municipales. El canal causal
+   plausible (programas de educación financiera, apoyos locales) podría ser muy
+   pequeño relativo a la variación total.
+
+---
+
+## 10. Pipeline de reproducción
+
+```bash
+cd <raíz del repo>
+source .venv/bin/activate
+
+# 1. Descriptivos
+python src/models/01_table1_descriptives.py
+
+# 2. TWFE baseline
+python src/models/02_twfe.py
+
+# 3. Event study
+python src/models/03_event_study.py
+
+# 4. Robustez
+python src/models/04_robustness.py
+
+# 5. Heterogeneidad
+python src/models/05_heterogeneity.py
+```
+
+Dependencias: `pandas`, `numpy`, `linearmodels`, `statsmodels`, `matplotlib`, `scipy`, `pyarrow`, `jinja2`.
